@@ -48,7 +48,7 @@ void VulkanEngine::init()
 	// We initialize SDL and create a window with it. 
 	SDL_Init(SDL_INIT_VIDEO);
 
-	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
+	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
 	_window = SDL_CreateWindow(
 		"Vulkan Engine",
@@ -112,7 +112,7 @@ void VulkanEngine::cleanup()
 		vkDestroySurfaceKHR(_instance, _surface, nullptr);
 		vkDestroyDevice(_device, nullptr);
 
-		vkb::destroy_debug_utils_messenger(_instance, _debug_messenger);
+		vkb::destroy_debug_utils_messenger(_instance, _debugMessenger);
 		vkDestroyInstance(_instance, nullptr);
 		SDL_DestroyWindow(_window);
 	}
@@ -137,8 +137,12 @@ void VulkanEngine::draw()
 
 	//request image from the swapchain
 	uint32_t swapchainImageIndex;
-	VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1000000000, get_current_frame()._swapchainSemaphore, nullptr, &swapchainImageIndex));
-
+	VkResult acquireResult = vkAcquireNextImageKHR(_device, _swapchain, 1000000000, get_current_frame()._swapchainSemaphore, nullptr, &swapchainImageIndex);
+	if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		_resizeRequested = true;
+		return;
+	}
 
 		// fill the command buffer
 
@@ -152,8 +156,8 @@ void VulkanEngine::draw()
 	//begin the command buffer recording. We will use this command buffer exactly once, so we want to let vulkan know that
 	VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-	_drawExtent.width = _drawImage.imageExtent.width;
-	_drawExtent.height = _drawImage.imageExtent.height;
+	_drawExtent.height = std::min(_swapchainExtent.height, _drawImage.imageExtent.height) * _renderScale;
+	_drawExtent.width = std::min(_swapchainExtent.width, _drawImage.imageExtent.width) * _renderScale;
 
 	VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
@@ -224,8 +228,11 @@ void VulkanEngine::draw()
 
 	presentInfo.pImageIndices = &swapchainImageIndex;
 
-	VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
-
+	VkResult presentResult = vkQueuePresentKHR(_graphicsQueue, &presentInfo);
+	if (presentResult == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		_resizeRequested = true;
+	}
 
 		//increase the number of frames drawn
 	_frameNumber++;
@@ -272,6 +279,11 @@ void VulkanEngine::run()
 			continue;
 		}
 
+		if (_resizeRequested)
+		{
+			resize_swapchain();
+		}
+
 		update_imgui();
 
 		draw();
@@ -293,7 +305,7 @@ void VulkanEngine::init_vulkan()
 
 	//grab the instance 
 	_instance = vkb_inst.instance;
-	_debug_messenger = vkb_inst.debug_messenger;
+	_debugMessenger = vkb_inst.debug_messenger;
 
 	SDL_Vulkan_CreateSurface(_window, _instance, &_surface);
 
@@ -760,9 +772,9 @@ void VulkanEngine::init_default_data()
 	rect_indices[4] = 1;
 	rect_indices[5] = 3;
 
-	_rectangle = uploadMesh(rect_indices, rect_vertices);
+	_rectangle = upload_mesh(rect_indices, rect_vertices);
 
-	_testMeshes = loadGltfMeshes(this, "..\\..\\assets\\basicmesh.glb").value();
+	_testMeshes = load_gltf_meshes(this, "..\\..\\assets\\basicmesh.glb").value();
 
 	//delete the rectangle data on engine shutdown
 	_mainDeletionQueue.push_function([&]() {
@@ -838,7 +850,7 @@ void VulkanEngine::init_imgui()
 
 void VulkanEngine::create_swapchain(uint32_t width, uint32_t height)
 {
-	vkb::SwapchainBuilder swapchainBuilder{ _chosenGPU,_device,_surface };
+	vkb::SwapchainBuilder swapchainBuilder{ _chosenGPU, _device, _surface };
 
 	_swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
@@ -870,6 +882,22 @@ void VulkanEngine::destroy_swapchain()
 	}
 }
 
+void VulkanEngine::resize_swapchain()
+{
+	vkDeviceWaitIdle(_device);
+
+	destroy_swapchain();
+
+	int w, h;
+	SDL_GetWindowSize(_window, &w, &h);
+	_windowExtent.width = w;
+	_windowExtent.height = h;
+
+	create_swapchain(_windowExtent.width, _windowExtent.height);
+
+	_resizeRequested = false;
+}
+
 AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
 	// allocate buffer
@@ -896,7 +924,7 @@ void VulkanEngine::destroy_buffer(const AllocatedBuffer& buffer)
 	vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
 }
 
-GPUMeshBuffers VulkanEngine::uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices)
+GPUMeshBuffers VulkanEngine::upload_mesh(std::span<uint32_t> indices, std::span<Vertex> vertices)
 {
 	const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
 	const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
@@ -954,6 +982,8 @@ void VulkanEngine::update_imgui()
 
 	if (ImGui::Begin("background"))
 	{
+		ImGui::SliderFloat("Render Scale", &_renderScale, 0.3f, 1.f);
+
 		ComputeEffect& selected = _backgroundEffects[_currentBackgroundEffect];
 
 		ImGui::Text("Selected effect: ", selected.name);

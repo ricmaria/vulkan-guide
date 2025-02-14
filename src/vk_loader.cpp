@@ -15,7 +15,7 @@
 #include <fastgltf/tools.hpp>
 
 
-std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(VulkanEngine* engine, std::filesystem::path filePath)
+std::optional<std::vector<std::shared_ptr<MeshAsset>>> load_gltf_meshes(VulkanEngine* engine, std::filesystem::path filePath)
 {
 	std::cout << "Loading GLTF: " << filePath << std::endl;
 
@@ -136,7 +136,7 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(VulkanEngi
 				vtx.color = glm::vec4(vtx.normal, 1.f);
 			}
 		}
-		newmesh.meshBuffers = engine->uploadMesh(indices, vertices);
+		newmesh.meshBuffers = engine->upload_mesh(indices, vertices);
 
 		meshes.emplace_back(std::make_shared<MeshAsset>(std::move(newmesh)));
 	}

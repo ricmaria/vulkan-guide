@@ -27,7 +27,7 @@ public:
 	//run main loop
 	void run();	
 
-	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+	GPUMeshBuffers upload_mesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 
 private:
 	class DeletionQueue
@@ -104,6 +104,7 @@ private:
 
 	void create_swapchain(uint32_t width, uint32_t height);
 	void destroy_swapchain();
+	void resize_swapchain();
 
 	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 	void destroy_buffer(const AllocatedBuffer& buffer);
@@ -123,12 +124,14 @@ private:
 	bool _isInitialized{ false };
 	int _frameNumber{ 0 };
 	bool _stopRendering{ false };
+	bool _resizeRequested{ false };
+
 	VkExtent2D _windowExtent{ 1700 , 900 };
 
 	FrameData _frames[FRAME_OVERLAP];
 
 	VkInstance _instance;// Vulkan library handle
-	VkDebugUtilsMessengerEXT _debug_messenger;// Vulkan debug output handle
+	VkDebugUtilsMessengerEXT _debugMessenger;// Vulkan debug output handle
 	VkPhysicalDevice _chosenGPU;// GPU chosen as the default device
 	VkDevice _device; // Vulkan device for commands
 	VkSurfaceKHR _surface;// Vulkan window surface
@@ -151,6 +154,7 @@ private:
 	AllocatedImage _drawImage;
 	AllocatedImage _depthImage;
 	VkExtent2D _drawExtent;
+	float _renderScale = 1.f;
 
 	DescriptorAllocator _globalDescriptorAllocator;
 

@@ -21,4 +21,4 @@ struct MeshAsset
 //forward declaration
 class VulkanEngine;
 
-std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(VulkanEngine* engine, std::filesystem::path filePath);
+std::optional<std::vector<std::shared_ptr<MeshAsset>>> load_gltf_meshes(VulkanEngine* engine, std::filesystem::path filePath);
