@@ -720,6 +720,9 @@ void VulkanEngine::init_mesh_pipeline()
 	pipelineBuilder.set_color_attachment_format(_drawImage.imageFormat);
 	pipelineBuilder.set_depth_format(_depthImage.imageFormat);
 
+	//pipelineBuilder.disable_blending();
+	pipelineBuilder.enable_blending_additive();
+
 	//finally build the pipeline
 	_meshPipeline = pipelineBuilder.build_pipeline(_device);
 
