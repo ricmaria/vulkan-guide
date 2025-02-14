@@ -5,7 +5,7 @@
 
 #include <vk_types.h>
 #include <vk_descriptors.h>
-
+#include <vk_loader.h>
 
 class VulkanEngine
 {
@@ -26,6 +26,8 @@ public:
 
 	//run main loop
 	void run();	
+
+	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 
 private:
 	class DeletionQueue
@@ -106,8 +108,6 @@ private:
 	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 	void destroy_buffer(const AllocatedBuffer& buffer);
 
-	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
-
 	void update_imgui();
 
 	void draw_background(VkCommandBuffer cmd);
@@ -149,6 +149,7 @@ private:
 
 	//draw resources
 	AllocatedImage _drawImage;
+	AllocatedImage _depthImage;
 	VkExtent2D _drawExtent;
 
 	DescriptorAllocator _globalDescriptorAllocator;
@@ -174,4 +175,6 @@ private:
 	VkPipeline _meshPipeline;
 
 	GPUMeshBuffers _rectangle;
+
+	std::vector<std::shared_ptr<MeshAsset>> _testMeshes;
 };
