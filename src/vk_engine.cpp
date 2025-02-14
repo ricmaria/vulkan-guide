@@ -553,13 +553,13 @@ void VulkanEngine::init_background_pipelines()
 	VkShaderModule gradientShader;
 	if (!vkutil::load_shader_module("../../shaders/gradient_color.comp.spv", _device, &gradientShader))
 	{
-		fmt::print("Error when building the compute shader \n");
+		fmt::println("Error when building the compute shader");
 	}
 
 	VkShaderModule skyShader;
 	if (!vkutil::load_shader_module("../../shaders/sky.comp.spv", _device, &skyShader))
 	{
-		fmt::print("Error when building the compute shader \n");
+		fmt::println("Error when building the compute shader");
 	}
 
 	VkPipelineShaderStageCreateInfo stageinfo{};
@@ -617,21 +617,21 @@ void VulkanEngine::init_triangle_pipeline()
 	VkShaderModule triangleFragShader;
 	if (!vkutil::load_shader_module("../../shaders/colored_triangle.frag.spv", _device, &triangleFragShader))
 	{
-		fmt::print("Error when building the triangle fragment shader module");
+		fmt::println("Error when building the triangle fragment shader module");
 	}
 	else
 	{
-		fmt::print("Triangle fragment shader succesfully loaded");
+		fmt::println("Triangle fragment shader succesfully loaded");
 	}
 
 	VkShaderModule triangleVertexShader;
 	if (!vkutil::load_shader_module("../../shaders/colored_triangle.vert.spv", _device, &triangleVertexShader))
 	{
-		fmt::print("Error when building the triangle vertex shader module");
+		fmt::println("Error when building the triangle vertex shader module");
 	}
 	else
 	{
-		fmt::print("Triangle vertex shader succesfully loaded");
+		fmt::println("Triangle vertex shader succesfully loaded");
 	}
 
 	//build the pipeline layout that controls the inputs/outputs of the shader
@@ -680,21 +680,21 @@ void VulkanEngine::init_mesh_pipeline()
 	VkShaderModule triangleFragShader;
 	if (!vkutil::load_shader_module("../../shaders/colored_triangle.frag.spv", _device, &triangleFragShader))
 	{
-		fmt::print("Error when building the triangle fragment shader module");
+		fmt::println("Error when building the triangle fragment shader module");
 	}
 	else
 	{
-		fmt::print("Triangle fragment shader succesfully loaded");
+		fmt::println("Mesh fragment shader succesfully loaded");
 	}
 
 	VkShaderModule triangleVertexShader;
 	if (!vkutil::load_shader_module("../../shaders/colored_triangle_mesh.vert.spv", _device, &triangleVertexShader))
 	{
-		fmt::print("Error when building the triangle vertex shader module");
+		fmt::println("Error when building the mesh triangle vertex shader module");
 	}
 	else
 	{
-		fmt::print("Triangle vertex shader succesfully loaded");
+		fmt::println("Triangle mesh vertex shader succesfully loaded");
 	}
 
 	VkPushConstantRange bufferRange{};
