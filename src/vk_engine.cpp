@@ -186,8 +186,8 @@ void VulkanEngine::draw()
 	//draw imgui into the swapchain image
 	draw_imgui(cmd, _swapchainImageViews[swapchainImageIndex]);
 
-	// set swapchain image layout to Present so we can show it on the screen
-	vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	// set swapchain image layout to Present so we can draw it
+	vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 	//finalize the command buffer (we can no longer add commands, but it can now be executed)
 	VK_CHECK(vkEndCommandBuffer(cmd));
@@ -655,12 +655,14 @@ void VulkanEngine::init_triangle_pipeline()
 	pipelineBuilder.set_multisampling_none();
 	//no blending
 	pipelineBuilder.disable_blending();
-	//no depth testing
-	pipelineBuilder.disable_depthtest();
+	
+	//depth testing
+	//pipelineBuilder.disable_depthtest();
+	pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
 
 	//connect the image format we will draw into, from draw image
 	pipelineBuilder.set_color_attachment_format(_drawImage.imageFormat);
-	pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+	pipelineBuilder.set_depth_format(_depthImage.imageFormat);
 
 	//finally build the pipeline
 	_trianglePipeline = pipelineBuilder.build_pipeline(_device);
