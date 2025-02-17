@@ -123,6 +123,10 @@ private:
 	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 	void destroy_buffer(const AllocatedBuffer& buffer);
 
+	AllocatedImage create_image(VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+	AllocatedImage create_image(void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+	void destroy_image(const AllocatedImage& img);
+
 	void update_imgui();
 
 	void draw_background(VkCommandBuffer cmd);
@@ -178,6 +182,8 @@ private:
 	GPUSceneData _sceneData;
 	VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
 
+	VkDescriptorSetLayout _singleImageDescriptorLayout;
+
 	VkPipeline _computePipeline;
 	VkPipelineLayout _computePipelineLayout;
 
@@ -198,4 +204,12 @@ private:
 	GPUMeshBuffers _rectangle;
 
 	std::vector<std::shared_ptr<MeshAsset>> _testMeshes;
+
+	AllocatedImage _whiteImage;
+	AllocatedImage _blackImage;
+	AllocatedImage _greyImage;
+	AllocatedImage _errorCheckerboardImage;
+
+	VkSampler _defaultSamplerLinear;
+	VkSampler _defaultSamplerNearest;
 };
