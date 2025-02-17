@@ -41,7 +41,8 @@ private:
 		void flush()
 		{
 			// reverse iterate the deletion queue to execute all the functions
-			for (auto it = _deletors.rbegin(); it != _deletors.rend(); it++) {
+			for (auto it = _deletors.rbegin(); it != _deletors.rend(); it++)
+			{
 				(*it)(); //call functors
 			}
 
@@ -55,10 +56,13 @@ private:
 	{
 		VkCommandPool _commandPool;
 		VkCommandBuffer _mainCommandBuffer;
+
 		VkSemaphore _swapchainSemaphore;
 		VkSemaphore _renderSemaphore;
 		VkFence _renderFence;
+
 		DeletionQueue _deletionQueue;
+		DescriptorAllocatorGrowable _frameDescriptors;
 	};
 
 	struct AllocatedImage
@@ -86,6 +90,16 @@ private:
 		VkPipelineLayout layout;
 
 		ComputePushConstants data;
+	};
+
+	struct GPUSceneData
+	{
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 viewproj;
+		glm::vec4 ambientColor;
+		glm::vec4 sunlightDirection; // w for sun power
+		glm::vec4 sunlightColor;
 	};
 
 	FrameData& get_current_frame() { return _frames[_frameNumber % FRAME_OVERLAP]; };
@@ -160,6 +174,9 @@ private:
 
 	VkDescriptorSet _drawImageDescriptors;
 	VkDescriptorSetLayout _drawImageDescriptorLayout;
+
+	GPUSceneData _sceneData;
+	VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
 
 	VkPipeline _computePipeline;
 	VkPipelineLayout _computePipelineLayout;
