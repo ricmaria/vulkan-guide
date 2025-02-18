@@ -7,6 +7,41 @@
 #include <vk_descriptors.h>
 #include <vk_loader.h>
 
+class GLTFMetallic_Roughness
+{
+public:
+	struct MaterialConstants
+	{
+		glm::vec4 colorFactors;
+		glm::vec4 metal_rough_factors;
+		//padding, we need it anyway for uniform buffers
+		glm::vec4 extra[14];
+	};
+
+	struct MaterialResources
+	{
+		AllocatedImage colorImage;
+		VkSampler colorSampler;
+		AllocatedImage metalRoughImage;
+		VkSampler metalRoughSampler;
+		VkBuffer dataBuffer;
+		uint32_t dataBufferOffset;
+	};
+
+	void build_pipelines(VkDevice device, VkDescriptorSetLayout gpuSceneDataDescriptorLayout, VkFormat drawImageFormat, VkFormat depthImageFormat);
+	void clear_resources(VkDevice device);
+
+	MaterialInstance write_material(VkDevice device, MaterialPass pass, const MaterialResources& resources, DescriptorAllocatorGrowable& descriptorAllocator);
+
+private:
+	MaterialPipeline _opaquePipeline;
+	MaterialPipeline _transparentPipeline;
+
+	VkDescriptorSetLayout _materialLayout;
+
+	DescriptorWriter _writer;
+};
+
 class VulkanEngine
 {
 private:
@@ -63,15 +98,6 @@ private:
 
 		DeletionQueue _deletionQueue;
 		DescriptorAllocatorGrowable _frameDescriptors;
-	};
-
-	struct AllocatedImage
-	{
-		VkImage image;
-		VkImageView imageView;
-		VmaAllocation allocation;
-		VkExtent3D imageExtent;
-		VkFormat imageFormat;
 	};
 
 	struct ComputePushConstants
@@ -174,7 +200,7 @@ private:
 	VkExtent2D _drawExtent;
 	float _renderScale = 1.f;
 
-	DescriptorAllocator _globalDescriptorAllocator;
+	DescriptorAllocatorGrowable _globalDescriptorAllocator;
 
 	VkDescriptorSet _drawImageDescriptors;
 	VkDescriptorSetLayout _drawImageDescriptorLayout;
@@ -212,4 +238,7 @@ private:
 
 	VkSampler _defaultSamplerLinear;
 	VkSampler _defaultSamplerNearest;
+
+	MaterialInstance _defaultData;
+	GLTFMetallic_Roughness _metalRoughMaterial;
 };
