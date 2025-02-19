@@ -128,6 +128,13 @@ private:
 		glm::vec4 sunlightColor;
 	};
 
+	struct MeshNode : public Node
+	{
+		std::shared_ptr<MeshAsset> mesh;
+
+		virtual void draw(const glm::mat4& topMatrix, DrawContext& ctx) override;
+	};
+
 	FrameData& get_current_frame() { return _frames[_frameNumber % FRAME_OVERLAP]; };
 
 	void init_vulkan();
@@ -152,6 +159,8 @@ private:
 	AllocatedImage create_image(VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
 	AllocatedImage create_image(void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
 	void destroy_image(const AllocatedImage& img);
+
+	void update_scene();
 
 	void update_imgui();
 
@@ -241,4 +250,7 @@ private:
 
 	MaterialInstance _defaultData;
 	GLTFMetallic_Roughness _metalRoughMaterial;
+
+	DrawContext _mainDrawContext;
+	std::unordered_map<std::string, std::shared_ptr<Node>> _loadedNodes;
 };
