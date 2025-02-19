@@ -1347,6 +1347,8 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 
 		vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0);
 	}
+
+	vkCmdEndRendering(cmd);
 }
 
 void VulkanEngine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)
