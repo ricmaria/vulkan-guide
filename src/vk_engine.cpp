@@ -73,6 +73,8 @@ void VulkanEngine::init()
 
 	init_default_data();
 
+	init_camera();
+
 	init_imgui();
 
 	//everything went fine
@@ -271,6 +273,8 @@ void VulkanEngine::run()
 					_stopRendering = false;
 				}
 			}
+
+			_mainCamera.process_sdl_event(e);
 
 			//send SDL event to imgui for handling
 			ImGui_ImplSDL2_ProcessEvent(&e);
@@ -918,6 +922,11 @@ void VulkanEngine::init_default_data()
 	}
 }
 
+void VulkanEngine::init_camera()
+{
+	_mainCamera.init(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.f), 0.0f, 0.0f);
+}
+
 void VulkanEngine::init_imgui()
 {
 	// 1: create descriptor pool for IMGUI
@@ -1192,14 +1201,20 @@ void VulkanEngine::update_scene()
 
 	_loadedNodes["Suzanne"]->draw(glm::mat4{ 1.f }, _mainDrawContext);
 
-	_sceneData.view = glm::translate(glm::vec3{ 0,0,-5 });
+	_mainCamera.update();
+
+	glm::mat4 view = _mainCamera.get_view_matrix();
+
 	// camera projection
-	_sceneData.proj = glm::perspective(glm::radians(70.f), (float)_windowExtent.width / (float)_windowExtent.height, 10000.f, 0.1f);
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)_windowExtent.width / (float)_windowExtent.height, 10000.f, 0.1f);
 
 	// invert the Y direction on projection matrix so that we are more similar
 	// to opengl and gltf axis
-	_sceneData.proj[1][1] *= -1;
-	_sceneData.viewproj = _sceneData.proj * _sceneData.view;
+	projection[1][1] *= -1;
+
+	_sceneData.view = view;
+	_sceneData.proj = projection;
+	_sceneData.viewproj = projection * view;
 
 	//some default lighting parameters
 	_sceneData.ambientColor = glm::vec4(.1f);

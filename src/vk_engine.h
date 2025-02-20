@@ -6,6 +6,7 @@
 #include <vk_types.h>
 #include <vk_descriptors.h>
 #include <vk_loader.h>
+#include <camera.h>
 
 class GLTFMetallic_Roughness
 {
@@ -147,6 +148,7 @@ private:
 	void init_triangle_pipeline();
 	void init_mesh_pipeline();
 	void init_default_data();
+	void init_camera();
 	void init_imgui();
 
 	void create_swapchain(uint32_t width, uint32_t height);
@@ -235,6 +237,8 @@ private:
 
 	VkPipelineLayout _meshPipelineLayout;
 	VkPipeline _meshPipeline;
+
+	Camera _mainCamera;
 
 	GPUMeshBuffers _rectangle;
 
