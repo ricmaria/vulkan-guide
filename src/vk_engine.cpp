@@ -73,6 +73,8 @@ void VulkanEngine::init()
 
 	init_default_data();
 
+	init_scenes();
+
 	init_camera();
 
 	init_imgui();
@@ -87,6 +89,8 @@ void VulkanEngine::cleanup()
 	{
 		//make sure the gpu has stopped doing its things
 		vkDeviceWaitIdle(_device);
+
+		_loadedScenes.clear();
 
 		for (int i = 0; i < FRAME_OVERLAP; i++)
 		{
@@ -823,7 +827,7 @@ void VulkanEngine::init_default_data()
 
 	_rectangle = upload_mesh(rect_indices, rect_vertices);
 
-	_testMeshes = load_gltf_meshes(this, "..\\..\\assets\\basicmesh.glb").value();
+	_testMeshes = LoadedGLTF::load_gltf_meshes(this, "..\\..\\assets\\basicmesh.glb").value();
 
 	//delete the rectangle data on engine shutdown
 	_mainDeletionQueue.push_function([&]() {
@@ -922,9 +926,19 @@ void VulkanEngine::init_default_data()
 	}
 }
 
+void VulkanEngine::init_scenes()
+{
+	std::string structurePath = { "..\\..\\assets\\structure.glb" };
+	auto structureFile = LoadedGLTF::load_gltf(this, structurePath);
+
+	assert(structureFile.has_value());
+
+	_loadedScenes["structure"] = *structureFile;
+}
+
 void VulkanEngine::init_camera()
 {
-	_mainCamera.init(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.f), 0.0f, 0.0f);
+	_mainCamera.init(glm::vec3(30.f, -00.f, -085.f), glm::vec3(0.f), 0.0f, 0.0f);
 }
 
 void VulkanEngine::init_imgui()
@@ -1056,8 +1070,7 @@ AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize, VkBufferUsageFlags
 	AllocatedBuffer newBuffer;
 
 	// allocate the buffer
-	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo, &newBuffer.buffer, &newBuffer.allocation,
-		&newBuffer.info));
+	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
 
 	return newBuffer;
 }
@@ -1199,8 +1212,6 @@ void VulkanEngine::update_scene()
 {
 	_mainDrawContext.OpaqueSurfaces.clear();
 
-	_loadedNodes["Suzanne"]->draw(glm::mat4{ 1.f }, _mainDrawContext);
-
 	_mainCamera.update();
 
 	glm::mat4 view = _mainCamera.get_view_matrix();
@@ -1221,13 +1232,17 @@ void VulkanEngine::update_scene()
 	_sceneData.sunlightColor = glm::vec4(1.f);
 	_sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
 
+	_loadedNodes["Suzanne"]->draw(glm::mat4{ 1.f }, _mainDrawContext);
+
 	for (int x = -3; x < 3; x++)
 	{
-		glm::mat4 scale = glm::scale(glm::vec3{ 0.2 });
+		glm::mat4 scale = glm::scale(glm::vec3{ 0.2f });
 		glm::mat4 translation = glm::translate(glm::vec3{ x, 1, 0 });
 
 		_loadedNodes["Cube"]->draw(translation * scale, _mainDrawContext);
 	}
+
+	_loadedScenes["structure"]->draw(glm::mat4{ 1.f }, _mainDrawContext);
 }
 
 void VulkanEngine::update_imgui()
@@ -1401,28 +1416,6 @@ void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& f
 	VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submit, _immFence));
 
 	VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
-}
-
-void VulkanEngine::MeshNode::draw(const glm::mat4& topMatrix, DrawContext& ctx)
-{
-	glm::mat4 nodeMatrix = topMatrix * worldTransform;
-
-	for (auto& s : mesh->surfaces)
-	{
-		RenderObject def;
-		def.indexCount = s.count;
-		def.firstIndex = s.startIndex;
-		def.indexBuffer = mesh->meshBuffers.indexBuffer.buffer;
-		def.material = &s.material->data;
-
-		def.transform = nodeMatrix;
-		def.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress;
-
-		ctx.OpaqueSurfaces.push_back(def);
-	}
-
-	// recurse down
-	Node::draw(topMatrix, ctx);
 }
 
 void GLTFMetallic_Roughness::build_pipelines(VkDevice device, VkDescriptorSetLayout gpuSceneDataDescriptorLayout, VkFormat drawImageFormat, VkFormat depthImageFormat)

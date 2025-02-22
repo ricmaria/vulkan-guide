@@ -64,6 +64,28 @@ public:
 	void run();	
 
 	GPUMeshBuffers upload_mesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+	
+	// TODO BEGIN: make private
+
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+
+	void destroy_buffer(const AllocatedBuffer& buffer);
+
+	void destroy_image(const AllocatedImage& img);
+
+	VkDevice _device;
+
+	AllocatedImage _whiteImage;
+	AllocatedImage _blackImage;
+	AllocatedImage _greyImage;
+	AllocatedImage _errorCheckerboardImage;
+
+	VkSampler _defaultSamplerLinear;
+	VkSampler _defaultSamplerNearest;
+
+	GLTFMetallic_Roughness _metalRoughMaterial;
+
+	// TODO END
 
 private:
 	class DeletionQueue
@@ -129,13 +151,6 @@ private:
 		glm::vec4 sunlightColor;
 	};
 
-	struct MeshNode : public Node
-	{
-		std::shared_ptr<MeshAsset> mesh;
-
-		virtual void draw(const glm::mat4& topMatrix, DrawContext& ctx) override;
-	};
-
 	FrameData& get_current_frame() { return _frames[_frameNumber % FRAME_OVERLAP]; };
 
 	void init_vulkan();
@@ -148,6 +163,7 @@ private:
 	void init_triangle_pipeline();
 	void init_mesh_pipeline();
 	void init_default_data();
+	void init_scenes();
 	void init_camera();
 	void init_imgui();
 
@@ -155,12 +171,12 @@ private:
 	void destroy_swapchain();
 	void resize_swapchain();
 
-	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
-	void destroy_buffer(const AllocatedBuffer& buffer);
+	// AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+	//void destroy_buffer(const AllocatedBuffer& buffer);
 
 	AllocatedImage create_image(VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
 	AllocatedImage create_image(void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
-	void destroy_image(const AllocatedImage& img);
+	//void destroy_image(const AllocatedImage& img);
 
 	void update_scene();
 
@@ -188,7 +204,7 @@ private:
 	VkInstance _instance;// Vulkan library handle
 	VkDebugUtilsMessengerEXT _debugMessenger;// Vulkan debug output handle
 	VkPhysicalDevice _chosenGPU;// GPU chosen as the default device
-	VkDevice _device; // Vulkan device for commands
+	// VkDevice _device; // Vulkan device for commands
 	VkSurfaceKHR _surface;// Vulkan window surface
 
 	VkSwapchainKHR _swapchain;
@@ -244,17 +260,19 @@ private:
 
 	std::vector<std::shared_ptr<MeshAsset>> _testMeshes;
 
-	AllocatedImage _whiteImage;
-	AllocatedImage _blackImage;
-	AllocatedImage _greyImage;
-	AllocatedImage _errorCheckerboardImage;
+	//AllocatedImage _whiteImage;
+	//AllocatedImage _blackImage;
+	//AllocatedImage _greyImage;
+	//AllocatedImage _errorCheckerboardImage;
 
-	VkSampler _defaultSamplerLinear;
-	VkSampler _defaultSamplerNearest;
+	//VkSampler _defaultSamplerLinear;
+	//VkSampler _defaultSamplerNearest;
 
 	MaterialInstance _defaultData;
-	GLTFMetallic_Roughness _metalRoughMaterial;
+	//GLTFMetallic_Roughness _metalRoughMaterial;
 
 	DrawContext _mainDrawContext;
 	std::unordered_map<std::string, std::shared_ptr<Node>> _loadedNodes;
+
+	std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> _loadedScenes;
 };
