@@ -35,6 +35,12 @@ struct MeshNode : public Node
 //forward declaration
 class VulkanEngine;
 
+namespace fastgltf
+{
+	class Asset;
+	struct Image;
+}
+
 struct LoadedGLTF : public IRenderable
 {
 	// storage for all the data on a given glTF file
@@ -61,6 +67,8 @@ struct LoadedGLTF : public IRenderable
 	static std::optional<std::vector<std::shared_ptr<MeshAsset>>> load_gltf_meshes(VulkanEngine* engine, std::filesystem::path filePath);	// TODO: remove
 
 	static std::optional<std::shared_ptr<LoadedGLTF>> load_gltf(VulkanEngine* engine, std::string_view filePath);
+
+	static std::optional<AllocatedImage> load_image(VulkanEngine* engine, fastgltf::Asset& asset, fastgltf::Image& image);
 
 private:
 
