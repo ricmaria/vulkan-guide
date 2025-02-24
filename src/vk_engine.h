@@ -200,6 +200,8 @@ private:
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 
+	static bool is_visible(const RenderObject& obj, const glm::mat4& viewproj);
+
 	struct SDL_Window* _window{ nullptr };
 
 	bool _isInitialized{ false };

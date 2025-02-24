@@ -1219,6 +1219,9 @@ GPUMeshBuffers VulkanEngine::upload_mesh(std::span<uint32_t> indices, std::span<
 
 void VulkanEngine::update_scene()
 {
+	//begin clock
+	auto start = std::chrono::system_clock::now();
+
 	_mainDrawContext.OpaqueSurfaces.clear();
 	_mainDrawContext.TransparentSurfaces.clear();
 
@@ -1253,6 +1256,12 @@ void VulkanEngine::update_scene()
 	}
 
 	_loadedScenes["structure"]->draw(glm::mat4{ 1.f }, _mainDrawContext);
+
+	auto end = std::chrono::system_clock::now();
+
+	//convert to microseconds (integer), and then come back to miliseconds
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	_stats.scene_update_time = elapsed.count() / 1000.f;
 }
 
 void VulkanEngine::update_imgui()
@@ -1320,10 +1329,11 @@ void VulkanEngine::draw_background(VkCommandBuffer cmd)
 
 void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 {
-	//reset counters
+		//reset counters
 	_stats.drawcall_count = 0;
 	_stats.triangle_count = 0;
-	//begin clock
+
+		//begin clock
 	auto start = std::chrono::system_clock::now();
 
 		// sort opaque surfaces
@@ -1333,7 +1343,10 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 
 	for (uint32_t i = 0; i < _mainDrawContext.OpaqueSurfaces.size(); i++)
 	{
-		opaque_draws.push_back(i);
+		if (is_visible(_mainDrawContext.OpaqueSurfaces[i], _sceneData.viewproj))
+		{
+			opaque_draws.push_back(i);
+		}
 	}
 
 	// sort the opaque surfaces by material and mesh
@@ -1350,6 +1363,31 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 			{
 				return A.material < B.material;
 			}
+		});
+
+		// sort transparent surfaces
+
+	std::vector<uint32_t> transparent_draws;
+	transparent_draws.reserve(_mainDrawContext.TransparentSurfaces.size());
+
+	for (uint32_t i = 0; i < _mainDrawContext.TransparentSurfaces.size(); i++)
+	{
+		if (is_visible(_mainDrawContext.TransparentSurfaces[i], _sceneData.viewproj))
+		{
+			transparent_draws.push_back(i);
+		}
+	}
+
+	// sort the opaque surfaces by distance from camera
+	std::sort(transparent_draws.begin(), transparent_draws.end(),
+		[&](const auto& iA, const auto& iB)
+		{
+			const RenderObject& A = _mainDrawContext.TransparentSurfaces[iA];
+			const RenderObject& B = _mainDrawContext.TransparentSurfaces[iB];
+			float distA = (_mainCamera.get_position() - A.bounds.origin).length() - A.bounds.sphereRadius;
+			float distB = (_mainCamera.get_position() - B.bounds.origin).length() - B.bounds.sphereRadius;
+
+			return distA < distB;
 		});
 
 	 // prepare GPU scene data descriptor set
@@ -1479,16 +1517,18 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 		draw(_mainDrawContext.OpaqueSurfaces[r]);
 	}
 
-	for (auto& r : _mainDrawContext.TransparentSurfaces)
+	for (auto& r : transparent_draws)
 	{
-		draw(r);
+		draw(_mainDrawContext.TransparentSurfaces[r]);
 	}
 
 	vkCmdEndRendering(cmd);
 
+		// stats
+
 	auto end = std::chrono::system_clock::now();
 
-	//convert to microseconds (integer), and then come back to miliseconds
+	//convert to microseconds (integer), and then come back to milliseconds
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	_stats.mesh_draw_time = elapsed.count() / 1000.f;
 }
@@ -1528,6 +1568,50 @@ void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& f
 	VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submit, _immFence));
 
 	VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
+}
+
+bool VulkanEngine::is_visible(const RenderObject& obj, const glm::mat4& viewproj)
+{
+	std::array<glm::vec3, 8> corners
+	{
+		glm::vec3 { 1, 1, 1 },
+		glm::vec3 { 1, 1, -1 },
+		glm::vec3 { 1, -1, 1 },
+		glm::vec3 { 1, -1, -1 },
+		glm::vec3 { -1, 1, 1 },
+		glm::vec3 { -1, 1, -1 },
+		glm::vec3 { -1, -1, 1 },
+		glm::vec3 { -1, -1, -1 },
+	};
+
+	glm::mat4 matrix = viewproj * obj.transform;
+
+	glm::vec3 min = { 1.5, 1.5, 1.5 };
+	glm::vec3 max = { -1.5, -1.5, -1.5 };
+
+	for (int c = 0; c < 8; c++)
+	{
+		// project each corner into clip space
+		glm::vec4 v = matrix * glm::vec4(obj.bounds.origin + (corners[c] * obj.bounds.extents), 1.f);
+
+		// perspective correction
+		v.x = v.x / v.w;
+		v.y = v.y / v.w;
+		v.z = v.z / v.w;
+
+		min = glm::min(glm::vec3{ v.x, v.y, v.z }, min);
+		max = glm::max(glm::vec3{ v.x, v.y, v.z }, max);
+	}
+
+	// check the clip space box is within the view
+	if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f || min.y > 1.f || max.y < -1.f)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
 }
 
 void GLTFMetallic_Roughness::build_pipelines(VkDevice device, VkDescriptorSetLayout gpuSceneDataDescriptorLayout, VkFormat drawImageFormat, VkFormat depthImageFormat)

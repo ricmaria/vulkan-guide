@@ -65,11 +65,18 @@ void MeshNode::draw(const glm::mat4& topMatrix, DrawContext& ctx)
 		def.firstIndex = s.startIndex;
 		def.indexBuffer = mesh->meshBuffers.indexBuffer.buffer;
 		def.material = &s.material->data;
-
+		def.bounds = s.bounds;
 		def.transform = nodeMatrix;
 		def.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress;
 
-		ctx.OpaqueSurfaces.push_back(def);
+		if (s.material->data.passType == MaterialPass::Transparent)
+		{
+			ctx.TransparentSurfaces.push_back(def);
+		}
+		else
+		{
+			ctx.OpaqueSurfaces.push_back(def);
+		}
 	}
 
 	// recurse down
@@ -454,6 +461,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> LoadedGLTF::load_gltf(VulkanEngine* e
 					});
 			}
 
+			// load material
 			if (p.materialIndex.has_value())
 			{
 				newSurface.material = materials[p.materialIndex.value()];
@@ -462,6 +470,21 @@ std::optional<std::shared_ptr<LoadedGLTF>> LoadedGLTF::load_gltf(VulkanEngine* e
 			{
 				newSurface.material = materials[0];
 			}
+
+			// compute bounds
+			// loop the vertices of this surface, find min/max bounds
+			glm::vec3 minpos = vertices[initial_vtx].position;
+			glm::vec3 maxpos = vertices[initial_vtx].position;
+			
+			for (size_t i = initial_vtx; i < vertices.size(); i++)
+			{
+				minpos = glm::min(minpos, vertices[i].position);
+				maxpos = glm::max(maxpos, vertices[i].position);
+			}
+			// calculate origin and extents from the min/max, use extent lenght for radius
+			newSurface.bounds.origin = (maxpos + minpos) / 2.f;
+			newSurface.bounds.extents = (maxpos - minpos) / 2.f;
+			newSurface.bounds.sphereRadius = glm::length(newSurface.bounds.extents);
 
 			newmesh->surfaces.push_back(newSurface);
 		}
