@@ -1135,30 +1135,35 @@ AllocatedImage VulkanEngine::create_image(void* data, VkExtent3D size, VkFormat 
 
 	AllocatedImage newImage = create_image(size, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
 
-	immediate_submit([&](VkCommandBuffer cmd) {
-		vkutil::transition_image(cmd, newImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	immediate_submit(
+		[&](VkCommandBuffer cmd)
+		{
+			vkutil::transition_image(cmd, newImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		VkBufferImageCopy copyRegion = {};
-		copyRegion.bufferOffset = 0;
-		copyRegion.bufferRowLength = 0;
-		copyRegion.bufferImageHeight = 0;
+			VkBufferImageCopy copyRegion = {};
+			copyRegion.bufferOffset = 0;
+			copyRegion.bufferRowLength = 0;
+			copyRegion.bufferImageHeight = 0;
 
-		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		copyRegion.imageSubresource.mipLevel = 0;
-		copyRegion.imageSubresource.baseArrayLayer = 0;
-		copyRegion.imageSubresource.layerCount = 1;
-		copyRegion.imageExtent = size;
+			copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copyRegion.imageSubresource.mipLevel = 0;
+			copyRegion.imageSubresource.baseArrayLayer = 0;
+			copyRegion.imageSubresource.layerCount = 1;
+			copyRegion.imageExtent = size;
 
-		// copy the buffer into the image
-		vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
-			&copyRegion);
+			// copy the buffer into the image
+			vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
-		vkutil::transition_image(cmd, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			if (mipmapped)
+			{
+				vkutil::generate_mipmaps(cmd, newImage.image, VkExtent2D{ newImage.imageExtent.width,newImage.imageExtent.height });
+			}
+			else
+			{
+				vkutil::transition_image(cmd, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			}
 		});
-
 	destroy_buffer(uploadbuffer);
-
 	return newImage;
 }
 

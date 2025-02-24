@@ -512,23 +512,26 @@ std::optional<std::shared_ptr<LoadedGLTF>> LoadedGLTF::load_gltf(VulkanEngine* e
 		nodes.push_back(newNode);
 		file.nodes[node.name.c_str()];
 
-		std::visit(fastgltf::visitor{ [&](fastgltf::Node::TransformMatrix matrix) {
-										  memcpy(&newNode->localTransform, matrix.data(), sizeof(matrix));
-									  },
-					   [&](fastgltf::Node::TRS transform) {
-						   glm::vec3 tl(transform.translation[0], transform.translation[1],
-							   transform.translation[2]);
-						   glm::quat rot(transform.rotation[3], transform.rotation[0], transform.rotation[1],
-							   transform.rotation[2]);
-						   glm::vec3 sc(transform.scale[0], transform.scale[1], transform.scale[2]);
+		std::visit(fastgltf::visitor
+		{
+			[&](fastgltf::Node::TransformMatrix matrix)
+			{
+				memcpy(&newNode->localTransform, matrix.data(), sizeof(matrix));
+			},
+			[&](fastgltf::Node::TRS transform)
+			{
+				glm::vec3 tl(transform.translation[0], transform.translation[1], transform.translation[2]);
+				glm::quat rot(transform.rotation[3], transform.rotation[0], transform.rotation[1], transform.rotation[2]);
+				glm::vec3 sc(transform.scale[0], transform.scale[1], transform.scale[2]);
 
-						   glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
-						   glm::mat4 rm = glm::toMat4(rot);
-						   glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
+				glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
+				glm::mat4 rm = glm::toMat4(rot);
+				glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
 
-						   newNode->localTransform = tm * rm * sm;
-					   } },
-			node.transform);
+				newNode->localTransform = tm * rm * sm;
+			}
+		},
+		node.transform);
 	}
 
 		// nodes hierarchy
@@ -619,7 +622,7 @@ std::optional<AllocatedImage> LoadedGLTF::load_image(VulkanEngine* engine, fastg
 					imagesize.height = height;
 					imagesize.depth = 1;
 
-					newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+					newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
 					stbi_image_free(data);
 				}
@@ -635,7 +638,7 @@ std::optional<AllocatedImage> LoadedGLTF::load_image(VulkanEngine* engine, fastg
 					imagesize.height = height;
 					imagesize.depth = 1;
 
-					newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT,false);
+					newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
 					stbi_image_free(data);
 				}
@@ -661,7 +664,7 @@ std::optional<AllocatedImage> LoadedGLTF::load_image(VulkanEngine* engine, fastg
 							imagesize.height = height;
 							imagesize.depth = 1;
 
-							newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+							newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
 							stbi_image_free(data);
 						}
