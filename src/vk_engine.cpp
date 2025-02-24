@@ -257,6 +257,8 @@ void VulkanEngine::run()
 	// main loop
 	while (!bQuit)
 	{
+		auto start = std::chrono::system_clock::now();
+
 		// Handle events on queue
 		while (SDL_PollEvent(&e) != 0)
 		{
@@ -300,6 +302,13 @@ void VulkanEngine::run()
 		update_imgui();
 
 		draw();
+
+		//get clock again, compare with start clock
+		auto end = std::chrono::system_clock::now();
+
+		//convert to microseconds (integer), and then come back to miliseconds
+		auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+		_stats.frametime = elapsed.count() / 1000.f;
 	}
 }
 
@@ -1267,6 +1276,14 @@ void VulkanEngine::update_imgui()
 		ImGui::InputFloat4("data2", (float*)&selected.data.data2);
 		ImGui::InputFloat4("data3", (float*)&selected.data.data3);
 		ImGui::InputFloat4("data4", (float*)&selected.data.data4);
+
+		ImGui::BeginGroup();
+		ImGui::Text("frametime %f ms", _stats.frametime);
+		ImGui::Text("draw time %f ms", _stats.mesh_draw_time);
+		ImGui::Text("update time %f ms", _stats.scene_update_time);
+		ImGui::Text("triangles %i", _stats.triangle_count);
+		ImGui::Text("draws %i", _stats.drawcall_count);
+		ImGui::EndGroup();
 	}
 
 	ImGui::End();
@@ -1303,6 +1320,12 @@ void VulkanEngine::draw_background(VkCommandBuffer cmd)
 
 void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 {
+	//reset counters
+	_stats.drawcall_count = 0;
+	_stats.triangle_count = 0;
+	//begin clock
+	auto start = std::chrono::system_clock::now();
+
 	 // prepare GPU scene data descriptor set
 
 	// allocate a new uniform buffer for the scene data
@@ -1380,6 +1403,10 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 			vkCmdPushConstants(cmd, draw.material->pipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &pushConstants);
 
 			vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0);
+
+			//add counters for triangles and draws
+			_stats.drawcall_count++;
+			_stats.triangle_count += draw.indexCount / 3;
 		};
 
 	for (auto& r : _mainDrawContext.OpaqueSurfaces)
@@ -1393,6 +1420,12 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 	}
 
 	vkCmdEndRendering(cmd);
+
+	auto end = std::chrono::system_clock::now();
+
+	//convert to microseconds (integer), and then come back to miliseconds
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	_stats.mesh_draw_time = elapsed.count() / 1000.f;
 }
 
 void VulkanEngine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)

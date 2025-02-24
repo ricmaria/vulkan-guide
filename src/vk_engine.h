@@ -152,6 +152,15 @@ private:
 		glm::vec4 sunlightColor;
 	};
 
+	struct EngineStats
+	{
+		float frametime;
+		int triangle_count;
+		int drawcall_count;
+		float scene_update_time;
+		float mesh_draw_time;
+	};
+
 	FrameData& get_current_frame() { return _frames[_frameNumber % FRAME_OVERLAP]; };
 
 	void init_vulkan();
@@ -276,4 +285,6 @@ private:
 	std::unordered_map<std::string, std::shared_ptr<Node>> _loadedNodes;
 
 	std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> _loadedScenes;
+
+	EngineStats _stats;
 };
