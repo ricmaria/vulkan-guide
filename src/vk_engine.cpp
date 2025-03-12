@@ -836,7 +836,11 @@ void VulkanEngine::init_default_data()
 
 	_rectangle = upload_mesh(rect_indices, rect_vertices);
 
-	_testMeshes = LoadedGLTF::load_gltf_meshes(this, "..\\..\\assets\\basicmesh.glb").value();
+	_testMeshes = LoadedGLTF::load_gltf_meshes("..\\..\\assets\\basicmesh.glb",
+		[this](std::span<uint32_t> indices, std::span<Vertex> vertices)
+		{
+			return this->upload_mesh(indices, vertices);
+		}).value();
 
 	//delete the rectangle data on engine shutdown
 	_mainDeletionQueue.push_function([&]() {
@@ -938,7 +942,53 @@ void VulkanEngine::init_default_data()
 void VulkanEngine::init_scenes()
 {
 	std::string structurePath = { "..\\..\\assets\\structure.glb" };
-	auto structureFile = LoadedGLTF::load_gltf(this, structurePath);
+	const BufferAllocator bufferAllocator
+	{
+		[this](size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
+		{
+			return this->create_buffer(allocSize, usage, memoryUsage);
+		},
+		[this](const AllocatedBuffer& buffer)
+		{
+			this->destroy_buffer(buffer);
+		}
+	};
+
+	const ImageAllocator imageAllocator =
+	{
+		[this](void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped)
+		{
+			return create_image(data, size, format, usage, mipmapped);
+		},
+		[this](const AllocatedImage& image)
+		{
+			destroy_image(image);
+		}
+	};
+
+	auto buildMaterial = [this](VkDevice device, MaterialPass pass, const GLTFMetallic_Roughness::MaterialResources& resources, DescriptorAllocatorGrowable& descriptorAllocator)
+		{
+			return _metalRoughMaterial.write_material(device, pass, resources, descriptorAllocator);
+		};
+
+	auto uploadMesh = [this](std::span<uint32_t> indices, std::span<Vertex> vertices)
+		{
+			return upload_mesh(indices, vertices);
+		};
+
+	LoadedGLTF::LoadGLTFParams loadGLTFParams;
+	loadGLTFParams.filePath = structurePath;
+	loadGLTFParams.device = _device;
+	loadGLTFParams.bufferAllocator = bufferAllocator;
+	loadGLTFParams.imageAllocator = imageAllocator;
+	loadGLTFParams.buildMaterial = buildMaterial;
+	loadGLTFParams.uploadMesh = uploadMesh;
+	loadGLTFParams.whiteImage = _whiteImage;
+	loadGLTFParams.errorImage = _errorCheckerboardImage;
+	loadGLTFParams.defaultSampler = _defaultSamplerLinear;
+
+
+	auto structureFile = LoadedGLTF::load_gltf(loadGLTFParams);
 
 	assert(structureFile.has_value());
 
@@ -1689,39 +1739,4 @@ void GLTFMetallic_Roughness::build_pipelines(VkDevice device, VkDescriptorSetLay
 
 	vkDestroyShaderModule(device, meshFragShader, nullptr);
 	vkDestroyShaderModule(device, meshVertexShader, nullptr);
-}
-
-MaterialInstance GLTFMetallic_Roughness::write_material(VkDevice device, MaterialPass pass, const MaterialResources& resources, DescriptorAllocatorGrowable& descriptorAllocator)
-{
-	MaterialInstance matData;
-	matData.passType = pass;
-	if (pass == MaterialPass::Transparent)
-	{
-		matData.pipeline = &_transparentPipeline;
-	}
-	else
-	{
-		matData.pipeline = &_opaquePipeline;
-	}
-
-	matData.materialSet = descriptorAllocator.allocate(device, _materialLayout);
-
-
-	_writer.clear();
-	_writer.write_buffer(0, resources.dataBuffer, sizeof(MaterialConstants), resources.dataBufferOffset, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	_writer.write_image(1, resources.colorImage.imageView, resources.colorSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-	_writer.write_image(2, resources.metalRoughImage.imageView, resources.metalRoughSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-	_writer.update_set(device, matData.materialSet);
-
-	return matData;
-}
-
-void GLTFMetallic_Roughness::clear_resources(VkDevice device)
-{
-	vkDestroyDescriptorSetLayout(device, _materialLayout, nullptr);
-	vkDestroyPipelineLayout(device, _transparentPipeline.layout, nullptr);
-
-	vkDestroyPipeline(device, _transparentPipeline.pipeline, nullptr);
-	vkDestroyPipeline(device, _opaquePipeline.pipeline, nullptr);
 }

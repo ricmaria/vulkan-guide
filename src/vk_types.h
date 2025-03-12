@@ -136,18 +136,36 @@ struct Node : public IRenderable
 	void refresh_transform(const glm::mat4& parentMatrix)
 	{
 		worldTransform = parentMatrix * localTransform;
-		for (auto c : children)
+		for (auto &child : children)
 		{
-			c->refresh_transform(worldTransform);
+			child->refresh_transform(worldTransform);
 		}
 	}
 
 	virtual void draw(const glm::mat4& topMatrix, DrawContext& ctx)
 	{
 		// draw children
-		for (auto& c : children)
+		for (auto& child : children)
 		{
-			c->draw(topMatrix, ctx);
+			child->draw(topMatrix, ctx);
 		}
 	}
+};
+
+struct BufferAllocator
+{
+	using CreateFunc = std::function<AllocatedBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)>;
+	using DestroyFunc = std::function<void(const AllocatedBuffer& buffer)>;
+
+	CreateFunc create_buffer;
+	DestroyFunc destroy_buffer;
+};
+
+struct ImageAllocator
+{
+	using CreateFunc = std::function<AllocatedImage(void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped)>;
+	using DestroyFunc = std::function<void(const AllocatedImage& image)>;
+
+	CreateFunc create_image;
+	DestroyFunc destroy_image;
 };

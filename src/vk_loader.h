@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <filesystem>
 #include <vk_descriptors.h>
+#include <vk_metallic_roughness_material.h>
 
 struct GLTFMaterial
 {
@@ -59,19 +60,48 @@ struct LoadedGLTF : public IRenderable
 
 	AllocatedBuffer materialDataBuffer;
 
-	VulkanEngine* creator;
+	using BuildMaterial = std::function<MaterialInstance(VkDevice, MaterialPass, const GLTFMetallic_Roughness::MaterialResources&, DescriptorAllocatorGrowable&)>;
+	using UploadMesh = std::function<GPUMeshBuffers(std::span<uint32_t> indices, std::span<Vertex> vertices)>;
 
+	struct LoadedGLTFParams
+	{
+		VkDevice device;
+		BufferAllocator bufferAllocator;
+		ImageAllocator imageAllocator;
+		AllocatedImage errorImage;
+	};
+
+	LoadedGLTF(LoadedGLTFParams params) :
+		_device(params.device), _bufferAllocator(params.bufferAllocator), _imageAllocator(params.imageAllocator), _errorImage(params.errorImage) { materialDataBuffer = {}; };
 	~LoadedGLTF() { clear_all(); };
 
 	virtual void draw(const glm::mat4& topMatrix, DrawContext& ctx);
 
-	static std::optional<std::vector<std::shared_ptr<MeshAsset>>> load_gltf_meshes(VulkanEngine* engine, std::filesystem::path filePath);	// TODO: remove
+	static std::optional<std::vector<std::shared_ptr<MeshAsset>>> load_gltf_meshes(std::filesystem::path filePath, UploadMesh uploadMesh);	// TODO: remove
+	
+	struct LoadGLTFParams
+	{
+		std::string_view filePath;
+		VkDevice device;
+		BufferAllocator bufferAllocator;
+		ImageAllocator imageAllocator;
+		BuildMaterial buildMaterial;
+		UploadMesh uploadMesh;
+		AllocatedImage whiteImage;
+		AllocatedImage errorImage;
+		VkSampler defaultSampler;
+	};
 
-	static std::optional<std::shared_ptr<LoadedGLTF>> load_gltf(VulkanEngine* engine, std::string_view filePath);
+	static std::optional<std::shared_ptr<LoadedGLTF>> load_gltf(const LoadGLTFParams& params);
 
-	static std::optional<AllocatedImage> load_image(VulkanEngine* engine, fastgltf::Asset& asset, fastgltf::Image& image);
+	static std::optional<AllocatedImage> load_image(ImageAllocator imageAllocator, fastgltf::Asset& asset, fastgltf::Image& image);
 
 private:
 
 	void clear_all();
+
+	VkDevice _device;
+	BufferAllocator _bufferAllocator;
+	ImageAllocator _imageAllocator;
+	AllocatedImage _errorImage;
 };
